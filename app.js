@@ -2,6 +2,9 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const fs = require('fs').promises;
+const path = require('path');
+
 const saltRounds = 10;
 require('dotenv').config()
 
@@ -32,23 +35,23 @@ const genKey = (length) => {
     currentKey = randString;
 }
 
-app.get('/', (req, res) => {
+app.post('/', (req, res) => {
+    const receivedToken = req.body.receivedToken;
     try {
-        const paramToken = req.query.token;
         if (Object.keys(jwtTokenMap).length === 0) {
             return res.status(404).json({ msg: 'No token available' });
         }
-    
+        
         else if (jwtTokenMap['expiry'] < Date.now()) {
             delete jwtTokenMap;
             return res.status(401).json({ msg: 'Token has expired' });
         }
-
+        
         else {
-            if (paramToken == jwtTokenMap['token']) {
-                return res.status(200).json({licenseKey: getKey(theFlag), paramToken: paramToken})
+            if (receivedToken == jwtTokenMap['token']) {
+                return res.status(200).json({flag: getKey(theFlag), token: receivedToken})
             }
-            return res.status(401).json({ msg: 'Token has expired' });
+            return res.status(401).json({ msg: 'Token has expired'});
         }
     }
     catch (err) {
@@ -84,6 +87,21 @@ app.get('/get-token', (req, res) => {
         res.status(401).json({
             msg: 'Unauthorized' + `${err}`
         });     
+    }
+});
+
+app.get('/', async (req, res) => {
+    try {
+        // Set the Content-Type header to text/plain
+        res.setHeader('Content-Type', 'text/plain');
+
+        const fileContent = await fs.readFile(path.join(__dirname, 'aktor.txt'), 'utf-8');
+
+        // Send the file contents as the response body
+        res.send(fileContent);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Internal Server Error');
     }
 });
 
